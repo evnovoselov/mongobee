@@ -5,11 +5,11 @@
 
     <name>mongobee</name>
     <description>MongoDB data migration tool for Java</description>
-    <url>https://github.com/mongobee/mongobee</url>
+    <url>https://github.com/evnovoselov/mongobee</url>
 
-    <groupId>com.github.mongobee</groupId>
+    <groupId>com.github.evnovoselov</groupId>
     <artifactId>mongobee</artifactId>
-    <version>0.13</version>
+    <version>0.13.1-SNAPSHOT</version>
 
     <licenses>
         <license>
@@ -20,16 +20,20 @@
     </licenses>
 
     <scm>
-        <connection>scm:git:git@github.com:mongobee/mongobee.git</connection>
-        <developerConnection>scm:git:git@github.com:mongobee/mongobee.git</developerConnection>
-        <url>git@github.com:mongobee/mongobee.git</url>
-        <tag>mongobee-0.13</tag>
+        <connection>scm:git:git@github.com:evnovoselov/mongobee.git</connection>
+        <developerConnection>scm:git:git@github.com:evnovoselov/mongobee.git</developerConnection>
+        <url>git@github.com:evnovoselov/mongobee.git</url>
+        <tag>mongobee-0.13.1</tag>
     </scm>
 
     <developers>
         <developer>
             <id>lstolowski</id>
             <name>lstolowski</name>
+        </developer>
+        <developer>
+            <id>evnovoselov</id>
+            <name>evnovoselov</name>
         </developer>
     </developers>
 
@@ -69,7 +73,7 @@
         <dependency>
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>
-            <version>0.9.9</version>
+            <version>0.9.11</version>
         </dependency>
         <dependency>
             <groupId>org.jongo</groupId>

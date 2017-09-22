@@ -14,16 +14,17 @@ import com.mongodb.client.model.IndexOptions;
 public class ChangeEntryIndexDao {
 
   private String changelogCollectionName;
+  private boolean isUniqueIndexesSupported = true;
 	  
   public ChangeEntryIndexDao(String changelogCollectionName) {
 	this.changelogCollectionName = changelogCollectionName;
   }
 
-  public void createRequiredUniqueIndex(MongoCollection<Document> collection) {
+  public void createRequiredIndex(MongoCollection<Document> collection) {
     collection.createIndex(new Document()
             .append(ChangeEntry.KEY_CHANGEID, 1)
             .append(ChangeEntry.KEY_AUTHOR, 1),
-        new IndexOptions().unique(true)
+        new IndexOptions().unique(isUniqueIndexesSupported)
     );
   }
 
@@ -54,4 +55,7 @@ public class ChangeEntryIndexDao {
 	this.changelogCollectionName = changelogCollectionName;
   }
 
+  public void setIsUniqueIndexesSupported(boolean isUniqueIndexesSupported) {
+    this.isUniqueIndexesSupported = isUniqueIndexesSupported;
+  }
 }

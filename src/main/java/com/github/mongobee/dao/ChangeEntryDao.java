@@ -27,6 +27,7 @@ public class ChangeEntryDao {
   private MongoClient mongoClient;
   private ChangeEntryIndexDao indexDao;
   private String changelogCollectionName;
+  private boolean isUniqueIndexesSupported = true;
 
   private LockDao lockDao;
 
@@ -120,11 +121,11 @@ public class ChangeEntryDao {
   private void ensureChangeLogCollectionIndex(MongoCollection<Document> collection) {
     Document index = indexDao.findRequiredChangeAndAuthorIndex(mongoDatabase);
     if (index == null) {
-      indexDao.createRequiredUniqueIndex(collection);
+      indexDao.createRequiredIndex(collection);
       logger.debug("Index in collection " + changelogCollectionName + " was created");
-    } else if (!indexDao.isUnique(index)) {
+    } else if (isUniqueIndexesSupported && !indexDao.isUnique(index)) {
       indexDao.dropIndex(collection, index);
-      indexDao.createRequiredUniqueIndex(collection);
+      indexDao.createRequiredIndex(collection);
       logger.debug("Index in collection " + changelogCollectionName + " was recreated");
     }
 
@@ -155,5 +156,10 @@ public class ChangeEntryDao {
   public void setLockCollectionName(String lockCollectionName) {
 	this.lockDao.setLockCollectionName(lockCollectionName);
   }
-  
+
+  public void setIsUniqueIndexesSupported(boolean isUniqueIndexesSupported) {
+    this.indexDao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
+    this.lockDao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
+    this.isUniqueIndexesSupported = isUniqueIndexesSupported;
+  }
 }

@@ -1,15 +1,16 @@
 package com.github.mongobee.dao;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.bson.Document;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.theories.DataPoint;
+import org.junit.experimental.theories.Theories;
+import org.junit.experimental.theories.Theory;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import com.github.fakemongo.Fongo;
@@ -23,28 +24,35 @@ import com.mongodb.client.MongoDatabase;
  * @author lstolowski
  * @since 10.12.14
  */
+@RunWith(Theories.class)
 public class ChangeEntryIndexDaoTest {
   private static final String TEST_SERVER = "testServer";
   private static final String DB_NAME = "mongobeetest";
   private static final String CHANGEID_AUTHOR_INDEX_NAME = "changeId_1_author_1";
   private static final String CHANGELOG_COLLECTION_NAME = "dbchangelog";
 
+  @DataPoint
+  public static boolean UNIQUE_INDEXES_SUPPORTED = true;
+  @DataPoint
+  public static boolean UNIQUE_INDEXES_UNSUPPORTED = false;
+
   private ChangeEntryIndexDao dao = new ChangeEntryIndexDao(CHANGELOG_COLLECTION_NAME);
 
-  @Test
-  public void shouldCreateRequiredUniqueIndex() {
+  @Theory
+  public void shouldCreateRequiredUniqueIndex(boolean isUniqueIndexesSupported) {
     // given
     MongoClient mongo = mock(MongoClient.class);
     MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
     when(mongo.getDatabase(Mockito.anyString())).thenReturn(db);
+    dao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
 
     // when
-    dao.createRequiredUniqueIndex(db.getCollection(CHANGELOG_COLLECTION_NAME));
+    dao.createRequiredIndex(db.getCollection(CHANGELOG_COLLECTION_NAME));
 
     // then
     Document createdIndex = findIndex(db, CHANGEID_AUTHOR_INDEX_NAME);
     assertNotNull(createdIndex);
-    assertTrue(dao.isUnique(createdIndex));
+    assertEquals(dao.isUnique(createdIndex), isUniqueIndexesSupported);
   }
 
   @Test

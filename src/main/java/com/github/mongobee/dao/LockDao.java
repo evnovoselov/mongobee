@@ -21,18 +21,19 @@ public class LockDao {
 
   private static final String LOCK_ENTRY_KEY_VAL = "LOCK";
   private String lockCollectionName;
+  private boolean isUniqueIndexesSupported = true;
   
   public LockDao(String lockCollectionName) {
 	this.lockCollectionName = lockCollectionName;
   }
 
   public void intitializeLock(MongoDatabase db) {
-    createCollectionAndUniqueIndexIfNotExists(db);
+    createCollectionAndIndexIfNotExists(db);
   }
 
-  private void createCollectionAndUniqueIndexIfNotExists(MongoDatabase db) {
+  private void createCollectionAndIndexIfNotExists(MongoDatabase db) {
     Document indexKeys = new Document(KEY_PROP_NAME, INDEX_SORT_ASC);
-    IndexOptions indexOptions = new IndexOptions().unique(true).name("mongobeelock_key_idx");
+    IndexOptions indexOptions = new IndexOptions().unique(isUniqueIndexesSupported).name("mongobeelock_key_idx");
 
     db.getCollection(lockCollectionName).createIndex(indexKeys, indexOptions);
   }
@@ -41,15 +42,24 @@ public class LockDao {
 
     Document insertObj = new Document(KEY_PROP_NAME, LOCK_ENTRY_KEY_VAL).append("status", "LOCK_HELD");
 
-    // acquire lock by attempting to insert the same value in the collection - if it already exists (i.e. lock held)
-    // there will be an exception
-    try {
-      db.getCollection(lockCollectionName).insertOne(insertObj);
-    } catch (MongoWriteException ex) {
-      if (ex.getError().getCategory() == ErrorCategory.DUPLICATE_KEY) {
-        logger.warn("Duplicate key exception while acquireLock. Probably the lock has been already acquired.");
+    if (isUniqueIndexesSupported) {
+      // acquire lock by attempting to insert the same value in the collection - if it already exists (i.e. lock held)
+      // there will be an exception
+      try {
+        db.getCollection(lockCollectionName).insertOne(insertObj);
+      } catch (MongoWriteException ex) {
+        if (ex.getError().getCategory() == ErrorCategory.DUPLICATE_KEY) {
+          logger.warn("Duplicate key exception while acquireLock. Probably the lock has been already acquired.");
+        }
+        return false;
       }
-      return false;
+    } else {
+      // TODO: This is a workaround implementation.
+      if (db.getCollection(lockCollectionName).count() > 0) {
+        logger.warn("'" + lockCollectionName + "' is not emppty. Seems that the lock has been already acquired.");
+        return false;
+      }
+      db.getCollection(lockCollectionName).insertOne(insertObj);
     }
     return true;
   }
@@ -73,4 +83,7 @@ public class LockDao {
 	this.lockCollectionName = lockCollectionName;
   }
 
+  public void setIsUniqueIndexesSupported(boolean isUniqueIndexesSupported) {
+    this.isUniqueIndexesSupported = isUniqueIndexesSupported;
+  }
 }

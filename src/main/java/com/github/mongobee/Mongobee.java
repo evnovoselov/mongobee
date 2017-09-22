@@ -376,4 +376,9 @@ public class Mongobee implements InitializingBean {
   public void close() {
     dao.close();
   }
+
+  public Mongobee setIsUniqueIndexesSupported(boolean isUniqueIndexesSupported) {
+    this.dao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
+    return this;
+  }
 }

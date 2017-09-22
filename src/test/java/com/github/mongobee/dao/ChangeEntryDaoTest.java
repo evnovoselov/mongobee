@@ -16,22 +16,33 @@ import com.github.mongobee.exception.MongobeeConfigurationException;
 import com.mongodb.FongoMongoCollection;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoDatabase;
+import org.junit.experimental.theories.DataPoint;
+import org.junit.experimental.theories.Theories;
+import org.junit.experimental.theories.Theory;
+import org.junit.runner.RunWith;
 
 /**
  * @author lstolowski
  * @since 10.12.14
  */
+@RunWith(Theories.class)
 public class ChangeEntryDaoTest {
   private static final String TEST_SERVER = "testServer";
   private static final String DB_NAME = "mongobeetest";
   private static final String CHANGELOG_COLLECTION_NAME = "dbchangelog";
   private static final String LOCK_COLLECTION_NAME = "mongobeelock";
 
-  @Test
-  public void shouldCreateChangeIdAuthorIndexIfNotFound() throws MongobeeConfigurationException {
+  @DataPoint
+  public static boolean UNIQUE_INDEXES_SUPPORTED = true;
+  @DataPoint
+  public static boolean UNIQUE_INDEXES_UNSUPPORTED = false;
+
+  @Theory
+  public void shouldCreateChangeIdAuthorIndexIfNotFound(boolean isUniqueIndexesSupported) throws MongobeeConfigurationException {
 
     // given
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME);
+    dao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
 
     MongoClient mongoClient = mock(MongoClient.class);
     MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
@@ -46,13 +57,13 @@ public class ChangeEntryDaoTest {
     dao.connectMongoDb(mongoClient, DB_NAME);
 
     //then
-    verify(indexDaoMock, times(1)).createRequiredUniqueIndex(any(FongoMongoCollection.class));
+    verify(indexDaoMock, times(1)).createRequiredIndex(any(FongoMongoCollection.class));
     // and not
     verify(indexDaoMock, times(0)).dropIndex(any(FongoMongoCollection.class), any(Document.class));
   }
 
-  @Test
-  public void shouldNotCreateChangeIdAuthorIndexIfFound() throws MongobeeConfigurationException {
+  @Theory
+  public void shouldNotCreateChangeIdAuthorIndexIfFound(boolean isUniqueIndexesSupported) throws MongobeeConfigurationException {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
@@ -60,6 +71,7 @@ public class ChangeEntryDaoTest {
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME);
+    dao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
     ChangeEntryIndexDao indexDaoMock = mock(ChangeEntryIndexDao.class);
     when(indexDaoMock.findRequiredChangeAndAuthorIndex(db)).thenReturn(new Document());
     when(indexDaoMock.isUnique(any(Document.class))).thenReturn(true);
@@ -69,13 +81,13 @@ public class ChangeEntryDaoTest {
     dao.connectMongoDb(mongoClient, DB_NAME);
 
     //then
-    verify(indexDaoMock, times(0)).createRequiredUniqueIndex(db.getCollection(CHANGELOG_COLLECTION_NAME));
+    verify(indexDaoMock, times(0)).createRequiredIndex(db.getCollection(CHANGELOG_COLLECTION_NAME));
     // and not
     verify(indexDaoMock, times(0)).dropIndex(db.getCollection(CHANGELOG_COLLECTION_NAME), new Document());
   }
 
-  @Test
-  public void shouldRecreateChangeIdAuthorIndexIfFoundNotUnique() throws MongobeeConfigurationException {
+  @Theory
+  public void checkRecreateChangeIdAuthorIndexIfFoundNotUnique(boolean isUniqueIndexesSupported) throws MongobeeConfigurationException {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
@@ -83,6 +95,7 @@ public class ChangeEntryDaoTest {
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME);
+    dao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
     ChangeEntryIndexDao indexDaoMock = mock(ChangeEntryIndexDao.class);
     when(indexDaoMock.findRequiredChangeAndAuthorIndex(db)).thenReturn(new Document());
     when(indexDaoMock.isUnique(any(Document.class))).thenReturn(false);
@@ -92,13 +105,14 @@ public class ChangeEntryDaoTest {
     dao.connectMongoDb(mongoClient, DB_NAME);
 
     //then
-    verify(indexDaoMock, times(1)).dropIndex(any(FongoMongoCollection.class), any(Document.class));
+    int shouldDropAndCreateTimes = isUniqueIndexesSupported ? 1 : 0;
+    verify(indexDaoMock, times(shouldDropAndCreateTimes)).dropIndex(any(FongoMongoCollection.class), any(Document.class));
     // and
-    verify(indexDaoMock, times(1)).createRequiredUniqueIndex(any(FongoMongoCollection.class));
+    verify(indexDaoMock, times(shouldDropAndCreateTimes)).createRequiredIndex(any(FongoMongoCollection.class));
   }
 
-  @Test
-  public void shouldInitiateLock() throws MongobeeConfigurationException {
+  @Theory
+  public void shouldInitiateLock(boolean isUniqueIndexesSupported) throws MongobeeConfigurationException {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
@@ -106,6 +120,7 @@ public class ChangeEntryDaoTest {
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME);
+    dao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
     ChangeEntryIndexDao indexDaoMock = mock(ChangeEntryIndexDao.class);
     dao.setIndexDao(indexDaoMock);
 
@@ -120,8 +135,8 @@ public class ChangeEntryDaoTest {
 
   }
 
-  @Test
-  public void shouldGetLockWhenLockDaoGetsLock() throws Exception {
+  @Theory
+  public void shouldGetLockWhenLockDaoGetsLock(boolean isUniqueIndexesSupported) throws Exception {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
@@ -129,6 +144,7 @@ public class ChangeEntryDaoTest {
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME);
+    dao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
 
     LockDao lockDao = mock(LockDao.class);
     when(lockDao.acquireLock(any(MongoDatabase.class))).thenReturn(true);
@@ -143,8 +159,8 @@ public class ChangeEntryDaoTest {
     assertTrue(hasLock);
   }
 
-  @Test
-  public void shouldReleaseLockFromLockDao() throws Exception {
+  @Theory
+  public void shouldReleaseLockFromLockDao(boolean isUniqueIndexesSupported) throws Exception {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
@@ -152,6 +168,7 @@ public class ChangeEntryDaoTest {
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME);
+    dao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
 
     LockDao lockDao = mock(LockDao.class);
     dao.setLockDao(lockDao);
@@ -165,8 +182,8 @@ public class ChangeEntryDaoTest {
     verify(lockDao).releaseLock(any(MongoDatabase.class));
   }
 
-  @Test
-  public void shouldCheckLockHeldFromFromLockDao() throws Exception {
+  @Theory
+  public void shouldCheckLockHeldFromFromLockDao(boolean isUniqueIndexesSupported) throws Exception {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
@@ -174,6 +191,7 @@ public class ChangeEntryDaoTest {
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME);
+    dao.setIsUniqueIndexesSupported(isUniqueIndexesSupported);
 
     LockDao lockDao = mock(LockDao.class);
     dao.setLockDao(lockDao);
